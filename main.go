@@ -1,43 +1,48 @@
 package main
 
 import (
+	"boid/threads"
+	"boid/util"
 	"github.com/hajimehoshi/ebiten"
 	"image/color"
 	"log"
-	"sync"
 )
 
 const (
-	screenWidth, screenHeight = 640, 360
-	boidCount                 = 500
-	viewRadius                = 13
-	adjRate                   = 0.015
+	screenWidth  = 640
+	screenHeight = 360
+	boidCount    = 500
+	viewRadius   = 13
+	adjRate      = 0.015
 )
+
+type World interface {
+	Setup(width, height, count, radius int, rate float64)
+	Animate()
+	Position(id int) util.Vector2D
+}
 
 var (
-	green   = color.RGBA{10, 255, 50, 255}
-	boids   [boidCount]*Boid
-	boidMap [screenWidth + 1][screenHeight + 1]int
-	lock    = sync.RWMutex{}
+	green = color.RGBA{R: 10, G: 255, B: 50, A: 255}
 )
 
-type Game struct{}
+type Game struct {
+	world World
+	count int
+}
 
 func (g *Game) Update(_ *ebiten.Image) error {
 	return nil
 }
 
 func (g *Game) Draw(screen *ebiten.Image) {
-	for i, row := range boidMap {
-		for j := range row {
-			boidMap[i][j] = -1
-		}
-	}
-	for _, boid := range boids {
-		screen.Set(int(boid.position.x+1), int(boid.position.y), green)
-		screen.Set(int(boid.position.x-1), int(boid.position.y), green)
-		screen.Set(int(boid.position.x), int(boid.position.y-1), green)
-		screen.Set(int(boid.position.x), int(boid.position.y+1), green)
+	g.world.Animate()
+	for i := 0; i < g.count; i++ {
+		pos := g.world.Position(i)
+		screen.Set(int(pos.X+1), int(pos.Y), green)
+		screen.Set(int(pos.X-1), int(pos.Y), green)
+		screen.Set(int(pos.X), int(pos.Y-1), green)
+		screen.Set(int(pos.X), int(pos.Y+1), green)
 	}
 }
 
@@ -46,12 +51,13 @@ func (g *Game) Layout(_, _ int) (w, h int) {
 }
 
 func main() {
-	for i := 0; i < boidCount; i++ {
-		CreateBoid(i)
-	}
+	world := threads.NewBoidWorld()
+	world.Setup(screenWidth, screenHeight, boidCount, viewRadius, adjRate)
+	game := Game{world: world, count: boidCount}
+
 	ebiten.SetWindowSize(screenWidth*2, screenHeight*2)
-	ebiten.SetWindowTitle("Boids")
-	if err := ebiten.RunGame(&Game{}); err != nil {
+	ebiten.SetWindowTitle("World")
+	if err := ebiten.RunGame(&game); err != nil {
 		log.Fatal(err)
 	}
 }
