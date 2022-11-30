@@ -4,6 +4,7 @@ import (
 	"github.com/hajimehoshi/ebiten"
 	"image/color"
 	"log"
+	"sync"
 )
 
 const (
@@ -17,6 +18,7 @@ var (
 	green   = color.RGBA{10, 255, 50, 255}
 	boids   [boidCount]*Boid
 	boidMap [screenWidth + 1][screenHeight + 1]int
+	lock    = sync.Mutex{}
 )
 
 type Game struct{}
@@ -45,7 +47,7 @@ func (g *Game) Layout(_, _ int) (w, h int) {
 
 func main() {
 	for i := 0; i < boidCount; i++ {
-		boids[i] = NewBoid(i)
+		CreateBoid(i)
 	}
 	ebiten.SetWindowSize(screenWidth*2, screenHeight*2)
 	ebiten.SetWindowTitle("Boids")
