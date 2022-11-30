@@ -27,9 +27,9 @@ func CreateBoid(bid int) {
 
 func (b *Boid) calcAcceleration() Vector2D {
 	upper, lower := b.position.AddV(viewRadius), b.position.AddV(-viewRadius)
-	avgPosition := Vector2D{0, 0}
-	avgVelocity := Vector2D{0, 0}
-	separation := Vector2D{0, 0}
+	avgPosition := Vector2D{}
+	avgVelocity := Vector2D{}
+	separation := Vector2D{}
 	count := 0.0
 
 	lock.RLock()
@@ -47,20 +47,14 @@ func (b *Boid) calcAcceleration() Vector2D {
 	}
 	lock.RUnlock()
 
-	accel := Vector2D{
-		b.borderBounce(b.position.x, screenWidth),
-		b.borderBounce(b.position.y, screenHeight),
-	}
-
+	accel := Vector2D{b.borderBounce(b.position.x, screenWidth), b.borderBounce(b.position.y, screenHeight)}
 	if count > 0 {
-		avgVelocity = avgVelocity.DivisionV(count)
-		avgPosition = avgPosition.DivisionV(count)
+		avgPosition, avgVelocity = avgPosition.DivisionV(count), avgVelocity.DivisionV(count)
 		accelAlignment := avgVelocity.Subtract(b.velocity).MultiplyV(adjRate)
 		accelCohesion := avgPosition.Subtract(b.position).MultiplyV(adjRate)
 		accelSeparation := separation.MultiplyV(adjRate)
 		accel = accel.Add(accelAlignment).Add(accelCohesion).Add(accelSeparation)
 	}
-
 	return accel
 }
 
@@ -71,7 +65,6 @@ func (b *Boid) moveOne() {
 	boidMap[int(b.position.x)][int(b.position.y)] = -1
 	b.position = b.position.Add(b.velocity)
 	boidMap[int(b.position.x)][int(b.position.y)] = b.id
-
 	lock.Unlock()
 }
 
@@ -88,6 +81,5 @@ func (b *Boid) borderBounce(pos, maxBorderPos float64) float64 {
 	} else if pos > maxBorderPos-viewRadius {
 		return 1 / (pos - maxBorderPos)
 	}
-
 	return 0
 }
