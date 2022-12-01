@@ -1,4 +1,4 @@
-package threads
+package threaded
 
 import (
 	"boid/util"
@@ -59,8 +59,8 @@ func (w *BoidWorld) Animate() {
 	// noop
 }
 
-func (w *BoidWorld) Position(id int) util.Vector2D {
-	return boids[id].position
+func (w *BoidWorld) PositionAndVelocity(id int) (util.Vector2D, util.Vector2D) {
+	return boids[id].position, boids[id].velocity
 }
 
 type boid struct {
@@ -70,8 +70,8 @@ type boid struct {
 }
 
 func (b *boid) calcAcceleration() util.Vector2D {
-	upper := b.position.AddV(float64(viewRadius))
-	lower := b.position.AddV(float64(-viewRadius))
+	upper := b.position.AddV(viewRadius)
+	lower := b.position.AddV(-viewRadius)
 	avgPosition := util.Vector2D{}
 	avgVelocity := util.Vector2D{}
 	separation := util.Vector2D{}
@@ -92,7 +92,7 @@ func (b *boid) calcAcceleration() util.Vector2D {
 	}
 	lock.RUnlock()
 
-	accel := util.Vector2D{b.borderBounce(b.position.X, screenWidth), b.borderBounce(b.position.Y, screenHeight)}
+	accel := util.Vector2D{X: b.borderBounce(b.position.X, screenWidth), Y: b.borderBounce(b.position.Y, screenHeight)}
 	if count > 0 {
 		avgPosition, avgVelocity = avgPosition.DivisionV(count), avgVelocity.DivisionV(count)
 		accelAlignment := avgVelocity.Subtract(b.velocity).MultiplyV(adjRate)

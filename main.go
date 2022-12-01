@@ -1,8 +1,11 @@
 package main
 
 import (
-	"boid/threads"
+	"boid/single"
+	"boid/threaded"
 	"boid/util"
+	"flag"
+	"fmt"
 	"github.com/hajimehoshi/ebiten"
 	"image/color"
 	"log"
@@ -16,15 +19,15 @@ const (
 	adjRate      = 0.015
 )
 
+var (
+	col = color.RGBA{R: 10, G: 255, B: 50, A: 255}
+)
+
 type World interface {
 	Setup(width, height, count, radius int, rate float64)
 	Animate()
-	Position(id int) util.Vector2D
+	PositionAndVelocity(id int) (util.Vector2D, util.Vector2D)
 }
-
-var (
-	green = color.RGBA{R: 10, G: 255, B: 50, A: 255}
-)
 
 type Game struct {
 	world World
@@ -32,17 +35,17 @@ type Game struct {
 }
 
 func (g *Game) Update(_ *ebiten.Image) error {
+	g.world.Animate()
 	return nil
 }
 
 func (g *Game) Draw(screen *ebiten.Image) {
-	g.world.Animate()
 	for i := 0; i < g.count; i++ {
-		pos := g.world.Position(i)
-		screen.Set(int(pos.X+1), int(pos.Y), green)
-		screen.Set(int(pos.X-1), int(pos.Y), green)
-		screen.Set(int(pos.X), int(pos.Y-1), green)
-		screen.Set(int(pos.X), int(pos.Y+1), green)
+		pos, _ := g.world.PositionAndVelocity(i)
+		screen.Set(int(pos.X+1), int(pos.Y), col)
+		screen.Set(int(pos.X-1), int(pos.Y), col)
+		screen.Set(int(pos.X), int(pos.Y-1), col)
+		screen.Set(int(pos.X), int(pos.Y+1), col)
 	}
 }
 
@@ -51,9 +54,28 @@ func (g *Game) Layout(_, _ int) (w, h int) {
 }
 
 func main() {
-	world := threads.NewBoidWorld()
-	world.Setup(screenWidth, screenHeight, boidCount, viewRadius, adjRate)
-	game := Game{world: world, count: boidCount}
+	var threadedWorld bool
+	var count, radius int
+	var adjustment float64
+
+	flag.BoolVar(&threadedWorld, "t", false, "One thread per boid")
+	flag.IntVar(&count, "n", boidCount, "Number of boids")
+	flag.IntVar(&radius, "r", viewRadius, "View radius")
+	flag.Float64Var(&adjustment, "a", adjRate, "Adjustment rate, smaller is smoother")
+	flag.Parse()
+
+	var world World
+
+	if threadedWorld {
+		fmt.Println("Started Multi Threaded World")
+		world = threaded.NewBoidWorld()
+	} else {
+		fmt.Println("Started Single Threaded World")
+		world = single.NewBoidWorld()
+	}
+
+	world.Setup(screenWidth, screenHeight, count, radius, adjustment)
+	game := Game{world: world, count: count}
 
 	ebiten.SetWindowSize(screenWidth*2, screenHeight*2)
 	ebiten.SetWindowTitle("World")
