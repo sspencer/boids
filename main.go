@@ -10,6 +10,7 @@ import (
 	"github.com/hajimehoshi/ebiten"
 	"image/color"
 	"log"
+	"math"
 )
 
 const (
@@ -18,7 +19,7 @@ const (
 	boidCount       = 800
 	viewRadius      = 13
 	singleAdjRate   = 0.25
-	threadedAdjRate = 0.015
+	threadedAdjRate = 0.025
 )
 
 var (
@@ -28,7 +29,7 @@ var (
 type World interface {
 	Setup(width, height, count, radius int, rate float64)
 	Animate()
-	Position(id int) *util.Vector2D
+	PositionVelocity(id int) (*util.Vector2D, *util.Vector2D)
 }
 
 type Game struct {
@@ -42,15 +43,23 @@ func (g *Game) Update(_ *ebiten.Image) error {
 }
 
 func (g *Game) Draw(screen *ebiten.Image) {
-	mid := util.Vector2D{X: screenWidth / 2, Y: screenHeight / 2}
-	maxDist := mid.Distance(util.Vector2D{X: 0, Y: 0})
+
+	// Compute color via distance from center
+	// mid := util.Vector2D{X: screenWidth / 2, Y: screenHeight / 2}
+	// maxDist := mid.Distance(util.Vector2D{X: 0, Y: 0})
 
 	for i := 0; i < g.count; i++ {
-		pos := g.world.Position(i)
+		pos, vel := g.world.PositionVelocity(i)
 
-		dist := mid.Distance(*pos)
+		// color via distance
+		// dist := mid.Distance(*pos)
+		// hsl := gc.HSL{H: dist / maxDist, S: 1.0, L: 0.5}
 
-		hsl := gc.HSL{H: dist / maxDist, S: 1.0, L: 0.5}
+		// Compute color via compass direction of velocity vector
+		// 0 => E, 1 => NE, 2 => N,  3 => NW,  4 => W, 5 => SW, 6 => S, 7 => SE
+		compass := int((math.Round(math.Atan2(-vel.Y, vel.X)/(2*math.Pi/8)))+8) % 8
+		hsl := gc.HSL{H: float64(compass) / 7.0, S: 1.0, L: 0.5}
+
 		rgb := hsl.ToRGB()
 		col = color.RGBA{
 			R: uint8(rgb.R * 255),

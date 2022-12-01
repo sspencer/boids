@@ -56,8 +56,8 @@ func (w *BoidWorld) Animate() {
 	// noop
 }
 
-func (w *BoidWorld) Position(id int) *util.Vector2D {
-	return &boids[id].position
+func (w *BoidWorld) PositionVelocity(id int) (*util.Vector2D, *util.Vector2D) {
+	return &boids[id].position, &boids[id].velocity
 }
 
 type boid struct {

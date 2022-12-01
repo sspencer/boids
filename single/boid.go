@@ -68,8 +68,8 @@ func (w *BoidWorld) Animate() {
 	}
 }
 
-func (w *BoidWorld) Position(id int) *util.Vector2D {
-	return &boids[id].position
+func (w *BoidWorld) PositionVelocity(id int) (*util.Vector2D, *util.Vector2D) {
+	return &boids[id].position, &boids[id].velocity
 }
 
 func (b *boid) calcPosition() {
