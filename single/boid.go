@@ -18,6 +18,13 @@ var (
 type BoidWorld struct {
 }
 
+type boid struct {
+	id       int
+	position util.Vector2D
+	velocity util.Vector2D
+	accel    util.Vector2D
+}
+
 func NewBoidWorld() *BoidWorld {
 	return &BoidWorld{}
 }
@@ -39,34 +46,48 @@ func (w *BoidWorld) Setup(width, height, count, radius int, rate float64) {
 
 	for i := 0; i < count; i++ {
 		bid := i
-		b := &boid{
-			id:       bid,
-			position: util.Vector2D{X: rand.Float64() * screenWidth, Y: rand.Float64() * screenHeight},
-			velocity: util.Vector2D{X: rand.Float64()*2 - 1.0, Y: rand.Float64()*2 - 1.0},
-		}
-
+		b := &boid{id: bid}
+		b.calcPosition()
+		b.calcVelocity()
 		boids[bid] = b
 		boidMap[int(b.position.X)][int(b.position.Y)] = bid
 	}
 }
 
 func (w *BoidWorld) Animate() {
+
 	for _, b := range boids {
-		b.moveOne()
+		b.calcAcceleration()
+	}
+
+	for _, b := range boids {
+		b.velocity = b.velocity.Add(b.accel).Limit(-1, 1)
+		boidMap[int(b.position.X)][int(b.position.Y)] = -1
+		b.position = b.position.Add(b.velocity)
+		boidMap[int(b.position.X)][int(b.position.Y)] = b.id
 	}
 }
 
-func (w *BoidWorld) PositionAndVelocity(id int) (util.Vector2D, util.Vector2D) {
-	return boids[id].position, boids[id].velocity
+func (w *BoidWorld) Position(id int) *util.Vector2D {
+	return &boids[id].position
 }
 
-type boid struct {
-	id       int
-	position util.Vector2D
-	velocity util.Vector2D
+func (b *boid) calcPosition() {
+	b.position.X = rand.Float64() * screenWidth
+	b.position.Y = rand.Float64() * screenHeight
 }
 
-func (b *boid) calcAcceleration() util.Vector2D {
+func (b *boid) calcVelocity() {
+	b.velocity.X = rand.Float64()*2 - 1.0
+	b.velocity.Y = rand.Float64()*2 - 1.0
+}
+
+func (b *boid) calcAcceleration() {
+	// occasionally change direction
+	if rand.Float64() > 0.9999 {
+		b.calcVelocity()
+	}
+
 	upper := b.position.AddV(viewRadius)
 	lower := b.position.AddV(-viewRadius)
 	avgPosition := util.Vector2D{}
@@ -87,23 +108,17 @@ func (b *boid) calcAcceleration() util.Vector2D {
 		}
 	}
 
-	accel := util.Vector2D{X: b.borderBounce(b.position.X, screenWidth), Y: b.borderBounce(b.position.Y, screenHeight)}
+	b.accel.X = b.borderBounce(b.position.X, screenWidth)
+	b.accel.Y = b.borderBounce(b.position.Y, screenHeight)
+
 	if count > 0 {
-		avgPosition, avgVelocity = avgPosition.DivisionV(count), avgVelocity.DivisionV(count)
+		avgPosition = avgPosition.DivisionV(count)
+		avgVelocity = avgVelocity.DivisionV(count)
 		accelAlignment := avgVelocity.Subtract(b.velocity).MultiplyV(adjRate)
 		accelCohesion := avgPosition.Subtract(b.position).MultiplyV(adjRate)
 		accelSeparation := separation.MultiplyV(adjRate)
-		accel = accel.Add(accelAlignment).Add(accelCohesion).Add(accelSeparation)
+		b.accel = b.accel.Add(accelAlignment).Add(accelCohesion).Add(accelSeparation)
 	}
-	return accel
-}
-
-func (b *boid) moveOne() {
-	acceleration := b.calcAcceleration()
-	b.velocity = b.velocity.Add(acceleration).Limit(-1, 1)
-	boidMap[int(b.position.X)][int(b.position.Y)] = -1
-	b.position = b.position.Add(b.velocity)
-	boidMap[int(b.position.X)][int(b.position.Y)] = b.id
 }
 
 func (b *boid) borderBounce(pos, maxBorderPos float64) float64 {
@@ -112,5 +127,6 @@ func (b *boid) borderBounce(pos, maxBorderPos float64) float64 {
 	} else if pos > maxBorderPos-viewRadius {
 		return 1 / (pos - maxBorderPos)
 	}
+
 	return 0
 }
